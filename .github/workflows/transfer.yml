@@ -1,0 +1,30 @@
+name: GDrive to Gofile
+on:
+  workflow_dispatch:
+    inputs:
+      file_id:
+        description: "Google Drive File ID"
+        required: true
+        default: "1zCxgX3JFrwniSFItPJL8JWStCEzHrl0U"
+      filename:
+        description: "Output filename"
+        required: false
+        default: "Realzeal_1116.mp4"
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install gdown
+        run: pip install -q gdown
+      - name: Download from Google Drive & Upload to Gofile
+        run: |
+          FID="${{ github.event.inputs.file_id }}"
+          FNAME="${{ github.event.inputs.filename }}"
+          gdown "https://drive.google.com/uc?id=${FID}" -O "$FNAME"
+          ls -lh "$FNAME"
+          RESP=$(curl -s -F "file=@${FNAME}" "https://upload.gofile.io/uploadfile")
+          echo "$RESP"
+          LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+          echo "=========================================="
+          echo "GOFILE LINK: $LINK"
+          echo "=========================================="
