@@ -20,7 +20,7 @@ jobs:
         run: |
           FID="${{ github.event.inputs.file_id }}"
           FNAME="${{ github.event.inputs.filename }}"
-          gdown --fuzzy "https://drive.google.com/uc?id=${FID}" -O "$FNAME"
+          gdown "${FID}" -O "$FNAME"
           ls -lh "$FNAME"
           SRV=$(curl -s --max-time 10 https://api.gofile.io/servers | jq -r '.data.servers[0].name // empty')
           URL="https://upload.gofile.io/uploadfile"
