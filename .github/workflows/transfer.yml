@@ -12,30 +12,22 @@ on:
 jobs:
   transfer:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: Install gdown
         run: pip install -q gdown
-      - name: Download from Google Drive & Upload to Gofile
+      - name: Download from Google Drive
         run: |
-          FID="${{ github.event.inputs.file_id }}"
-          FNAME="${{ github.event.inputs.filename }}"
-          gdown "${FID}" -O "$FNAME"
-          ls -lh "$FNAME"
-          SRV=$(curl -s --max-time 10 https://api.gofile.io/servers | jq -r '.data.servers[0].name // empty')
-          URL="https://upload.gofile.io/uploadfile"
-          if [ -n "$SRV" ]; then
-            URL="https://${SRV}.gofile.io/uploadFile"
-          fi
-          echo "Uploading to: $URL"
-          RESP=$(curl -s --max-time 600 -F "file=@${FNAME}" "$URL")
+          echo "Start download: $(date)"
+          timeout 240 gdown "${{ github.event.inputs.file_id }}" -O "${{ github.event.inputs.filename }}"
+          ls -lh "${{ github.event.inputs.filename }}"
+          echo "End download: $(date)"
+      - name: Upload to Gofile
+        run: |
+          echo "Start upload: $(date)"
+          RESP=$(curl -sS --max-time 300 -F "file=@${{ github.event.inputs.filename }}" "https://upload.gofile.io/uploadfile")
           echo "$RESP"
           LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
-          if [ -z "$LINK" ]; then
-            RESP=$(curl -s --max-time 600 -F "file=@${FNAME}" "https://upload.gofile.io/uploadfile")
-            echo "$RESP"
-            LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
-          fi
           echo "=========================================="
           echo "GOFILE LINK: $LINK"
           echo "=========================================="
