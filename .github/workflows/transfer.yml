@@ -5,7 +5,6 @@ on:
       file_id:
         description: "Google Drive File ID"
         required: true
-        default: "1zCxgX3JFrwniSFItPJL8JWStCEzHrl0U"
       filename:
         description: "Output filename"
         required: false
@@ -13,6 +12,7 @@ on:
 jobs:
   transfer:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Install gdown
         run: pip install -q gdown
@@ -20,11 +20,22 @@ jobs:
         run: |
           FID="${{ github.event.inputs.file_id }}"
           FNAME="${{ github.event.inputs.filename }}"
-          gdown "https://drive.google.com/uc?id=${FID}" -O "$FNAME"
+          gdown --fuzzy "https://drive.google.com/uc?id=${FID}" -O "$FNAME"
           ls -lh "$FNAME"
-          RESP=$(curl -s -F "file=@${FNAME}" "https://upload.gofile.io/uploadfile")
+          SRV=$(curl -s --max-time 10 https://api.gofile.io/servers | jq -r '.data.servers[0].name // empty')
+          URL="https://upload.gofile.io/uploadfile"
+          if [ -n "$SRV" ]; then
+            URL="https://${SRV}.gofile.io/uploadFile"
+          fi
+          echo "Uploading to: $URL"
+          RESP=$(curl -s --max-time 600 -F "file=@${FNAME}" "$URL")
           echo "$RESP"
           LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+          if [ -z "$LINK" ]; then
+            RESP=$(curl -s --max-time 600 -F "file=@${FNAME}" "https://upload.gofile.io/uploadfile")
+            echo "$RESP"
+            LINK=$(echo "$RESP" | jq -r '.data.downloadPage // empty')
+          fi
           echo "=========================================="
           echo "GOFILE LINK: $LINK"
           echo "=========================================="
